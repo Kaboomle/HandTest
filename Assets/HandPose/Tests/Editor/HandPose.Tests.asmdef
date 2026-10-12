@@ -1,0 +1,24 @@
+{
+  "name": "HandPose.Tests",
+  "rootNamespace": "HandPose.Tests",
+  "references": [
+    "HandPose.Core",
+    "HandPose.Runtime",
+    "Unity.XR.PICO.LivePreview",
+    "HandPose.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false,
+  "versionDefines": [
+    {
+      "name": "com.unity.pico.livepreview",
+      "expression": "",
+      "define": "PICO_LIVE_PREVIEW"
+    }
+  ]
+}

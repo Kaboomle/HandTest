@@ -1,0 +1,1 @@
+{"name":"HandPose.Runtime","rootNamespace":"HandPose","references":["HandPose.Core","Unity.XR.PICO","Unity.ugui","Unity.InputSystem"],"autoReferenced":true}

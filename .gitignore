@@ -107,3 +107,33 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Ignore rules from the source project
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+Validation/UnityProject/
+Validation/SyntheticSessions/
+*.csproj
+*.sln
+*.slnx
+*.apk
+*.aab
+*.pyc
+__pycache__/
+
+# Project-specific generated files and validation copies
+Validation/UnityProject/
+Validation/SyntheticSessions/
+Validation/Logs/
+__pycache__/
+*.pyc
+
+# Android signing credentials
+*.keystore
+*.jks
+
+# Unity Burst debug output
+*_BurstDebugInformation_DoNotShip/

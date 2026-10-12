@@ -1,0 +1,7 @@
+timestamp_s,hand_id,event_type,pose,duration_s,reason,after_frame_id
+0.11,Left,Start,Fist,0,Stabilized,1
+0.11,Left,Update,Fist,0,,1
+0.11,Right,Start,Point,0,Stabilized,1
+0.11,Right,Update,Point,0,,1
+0.22,Left,Update,Fist,0.11,,2
+0.22,Right,Update,Point,0.11,,2

@@ -1,0 +1,23 @@
+{
+  "name": "HandPose.Editor",
+  "rootNamespace": "HandPose.Editor",
+  "references": [
+    "HandPose.Core",
+    "HandPose.Runtime",
+    "Unity.XR.PICO",
+    "Unity.XR.Management",
+    "Unity.XR.Management.Editor",
+    "Unity.XR.PICO.LivePreview"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true,
+  "versionDefines": [
+    {
+      "name": "com.unity.pico.livepreview",
+      "expression": "",
+      "define": "PICO_LIVE_PREVIEW"
+    }
+  ]
+}

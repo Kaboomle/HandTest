@@ -1,0 +1,62 @@
+{
+    "schema_version": 2,
+    "session_id": "20261011T142209948Z_bc76b1e2",
+    "created_utc": "2026-10-11T14:22:09.9488273Z",
+    "participant_id": "",
+    "unity_version": "6000.0.38f1",
+    "sdk_version": "3.4.0",
+    "sdk_commit": "",
+    "os_version": "",
+    "source": "SYNTHETIC intermediate thumb fixture; not PICO sensor observations",
+    "coordinate_system": "Unity left-handed tracking-origin local; x right, y up, z forward; meters; quaternion x,y,z,w",
+    "sdk_conversion": "PICO native path: Vector3f.ToVector3=(x,y,-z), Quatf.ToQuat=(x,y,-z,-w), applied once. Synthetic/replay positions already use Unity coordinates.",
+    "sampling": "Provider batch timestamps; inspect source. PICO live queries once per Update and may repeat sensor samples; Update rate is not sensor frequency. HandJointLocations has no SDK timestamp. Synthetic/replay batches are not sensor acquisitions.",
+    "validity": "Provider validity plus numeric/geometry guards. PICO uses isActive and PositionValid/OrientationValid; synthetic fixtures use programmed flags. Original SDK flags are retained when available. Flags are not calibrated confidence.",
+    "settings_version": "5.0-thumb-mcp-eight-poses",
+    "settings": {
+        "version": "5.0-thumb-mcp-eight-poses",
+        "rulesVersion": 5,
+        "fingers": [
+            {
+                "extendedDegrees": 160.0,
+                "bentDegrees": 130.0
+            },
+            {
+                "extendedDegrees": 160.0,
+                "bentDegrees": 130.0
+            },
+            {
+                "extendedDegrees": 160.0,
+                "bentDegrees": 130.0
+            },
+            {
+                "extendedDegrees": 160.0,
+                "bentDegrees": 130.0
+            }
+        ],
+        "thumb": {
+            "extendedDegrees": 150.0,
+            "bentDegrees": 125.0
+        },
+        "pinchEnter": 0.25,
+        "pinchExit": 0.3499999940395355,
+        "minHandScaleMeters": 0.009999999776482582,
+        "maxHandScaleMeters": 0.20000000298023225,
+        "minSegmentMeters": 9.999999974752428e-7,
+        "stabilizationSeconds": 0.1,
+        "priority": [
+            4,
+            7,
+            10,
+            8,
+            3,
+            2,
+            1,
+            0
+        ]
+    },
+    "recording_complete": true,
+    "dropped_batches": 0,
+    "dropped_events": 0,
+    "write_error": ""
+}

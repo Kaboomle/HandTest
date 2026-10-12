@@ -1,0 +1,11 @@
+trial_id,hand_id,target_pose,cue_s,hold_start_s,hold_end_s,status
+1,Left,Open,0,0.5,1.8,Completed
+2,Right,Open,0,0.5,1.8,Completed
+3,Left,Fist,2,2.5,3.8,Completed
+4,Right,Fist,2,2.5,3.8,Completed
+5,Left,Victory,4,4.5,5.8,Completed
+6,Right,Victory,4,4.5,5.8,Completed
+7,Left,Point,6,6.5,7.8,Completed
+8,Right,Point,6,6.5,7.8,Completed
+9,Left,Pinch,8,8.5,9.8,Completed
+10,Right,Pinch,8,8.5,9.8,Completed
