@@ -36,6 +36,11 @@ namespace HandPose
             {
                 // Clear active/count: never treat a failed call's previous sample as fresh valid data.
                 locations.isActive = 0; locations.jointCount = 0;
+                if (!PXR_ProjectSetting.GetProjectConfig().handTracking)
+                {
+                    f.InvalidReason = "HandTrackingDisabledInProjectSettings";
+                    return f;
+                }
                 bool ok = PXR_HandTracking.GetJointLocations(hand == HandId.Left ? HandType.HandLeft : HandType.HandRight,ref locations);
                 f.SdkActive = locations.isActive;
                 f.HandValid = ok && locations.isActive != 0 && locations.jointLocations != null;

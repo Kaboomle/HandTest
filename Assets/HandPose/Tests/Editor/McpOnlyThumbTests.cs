@@ -45,8 +45,8 @@ namespace HandPose.Tests
         [Test]
         public void CurrentRuleRequirementsUseThreeThumbPointsAndRetainPinchTips()
         {
-            Assert.That(PoseRuleEvaluator.RequiredJoints(PoseId.Gun).Length,Is.EqualTo(19));
-            Assert.That(PoseRuleEvaluator.RequiredJoints(PoseId.Gun).Contains(JointId.ThumbTip),Is.False);
+            Assert.That(PoseRuleEvaluator.RequiredJoints(PoseId.Gun).Length,Is.EqualTo(21));
+            Assert.That(PoseRuleEvaluator.RequiredJoints(PoseId.Gun).Contains(JointId.ThumbTip),Is.True);
             Assert.That(PoseRuleEvaluator.RequiredJoints(PoseId.Gun,4).Length,Is.EqualTo(20));
             Assert.That(PoseRuleEvaluator.RequiredJoints(PoseId.Pinch).Contains(JointId.ThumbTip),Is.True);
         }

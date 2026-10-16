@@ -12,8 +12,8 @@ namespace HandPose
 
     public struct ThumbFeature
     {
-        public double Mcp, Ip, BaseAngle;
-        public bool McpValid, IpValid, BaseAngleValid;
+        public double Mcp, Ip, BaseAngle, SpreadRatio;
+        public bool McpValid, IpValid, BaseAngleValid, SpreadValid;
         public FingerState State;
     }
 
@@ -62,6 +62,19 @@ namespace HandPose
             return FingerState.Intermediate;
         }
         public static FingerState ClassifyThumb(double angle,FingerThreshold threshold) => Classify(angle,angle,threshold);
+        // The little-to-index MCP axis points toward the thumb on either hand.
+        // Dot with the unnormalized axis and divide by width squared: rotation/scale invariant.
+        public static bool TryThumbSpread(Vector3 tip,Vector3 indexBase,Vector3 littleBase,
+            double minWidth,double maxWidth,out double ratio)
+        {
+            ratio=0;
+            if(!Numeric.Finite(tip) || !Numeric.Finite(indexBase) || !Numeric.Finite(littleBase)) return false;
+            double x=(double)indexBase.x-littleBase.x,y=(double)indexBase.y-littleBase.y,z=(double)indexBase.z-littleBase.z;
+            double squared=x*x+y*y+z*z;
+            if(!Numeric.Finite(squared) || squared<=0 || squared<minWidth*minWidth || squared>maxWidth*maxWidth) return false;
+            ratio=(((double)tip.x-indexBase.x)*x+((double)tip.y-indexBase.y)*y+((double)tip.z-indexBase.z)*z)/squared;
+            return Numeric.Finite(ratio);
+        }
         public static HandFeatures Extract(HandFrame frame, PoseSettings settings)
         {
             var f = new HandFeatures();
@@ -96,6 +109,11 @@ namespace HandPose
                 (thumbFeature.McpValid?ClassifyThumb(thumbFeature.Mcp,settings.thumb):FingerState.Invalid) :
                 (thumbFeature.McpValid && thumbFeature.IpValid?Classify(thumbFeature.Mcp,thumbFeature.Ip,settings.thumb):FingerState.Invalid);
             f.Thumb = thumbFeature;
+            // v7: a curled IP joint overrides an open base. Missing IP data is not bent.
+            if (settings.rulesVersion >= 7)
+                f.Thumb.State = !thumbFeature.BaseAngleValid || !thumbFeature.IpValid ? FingerState.Invalid :
+                    thumbFeature.Ip <= settings.thumb.bentDegrees + 0.0001 ? FingerState.Bent : thumbFeature.State;
+            thumbFeature = f.Thumb;
             if(settings.RequiresThumb && thumbFeature.State == FingerState.Invalid)
                 reason += (reason.Length > 0 ? ";" : "") + "Thumb:MissingNonFiniteOrDegenerate";
             bool scale = frame.TryPosition(JointId.IndexProximal,out var indexBase) & frame.TryPosition(JointId.LittleProximal,out var littleBase);
@@ -104,6 +122,15 @@ namespace HandPose
             if (tips) f.PinchMeters = Vector3.Distance(thumb,indexTip);
             f.ScaleMeasured = scale && Numeric.Finite(f.ScaleMeters);
             f.DistanceMeasured = tips && Numeric.Finite(f.PinchMeters);
+            f.Thumb.SpreadValid=scale && tt && TryThumbSpread(t3,indexBase,littleBase,
+                settings.minHandScaleMeters,settings.maxHandScaleMeters,out f.Thumb.SpreadRatio);
+            if(settings.useThumbSpread && f.Thumb.State!=FingerState.Invalid)
+            {
+                if(!f.Thumb.SpreadValid) f.Thumb.State=FingerState.Invalid;
+                else if(f.Thumb.BaseAngleValid && f.Thumb.BaseAngle>=settings.thumbSpreadMinBaseDegrees &&
+                    f.Thumb.SpreadRatio>=settings.thumbSpreadExtendedRatio)
+                    f.Thumb.State=FingerState.Extended;
+            }
             f.PinchValid = scale && tips && Numeric.Finite(f.ScaleMeters) && Numeric.Finite(f.PinchMeters) &&
                 f.ScaleMeters >= settings.minHandScaleMeters && f.ScaleMeters <= settings.maxHandScaleMeters;
             if (f.PinchValid)

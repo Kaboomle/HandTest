@@ -10,6 +10,53 @@ namespace HandPose.Tests
 {
     public class PoseTests
     {
+        [TestCase(HandId.Left)] [TestCase(HandId.Right)]
+        public void ThumbSpreadRescuesGunAndOpenWithoutChangingTuckedPoint(HandId hand)
+        {
+            var settings=new PoseSettings().CopyForLive();
+            var fingers=new[] {FingerState.Extended,FingerState.Bent,FingerState.Bent,FingerState.Bent};
+            var gun=SyntheticHands.CreatePattern(FingerState.Intermediate,fingers,hand,0,0,.5f);
+            var result=new PoseRuleEvaluator(settings).Evaluate(gun);
+            Assert.That(result.Features.Thumb.SpreadRatio,Is.EqualTo(.5).Within(.0001));
+            Assert.That(result.RawPose,Is.EqualTo(PoseId.Gun));
+            var point=SyntheticHands.CreatePattern(FingerState.Intermediate,fingers,hand,0,0,.1f);
+            Assert.That(new PoseRuleEvaluator(settings).Evaluate(point).RawPose,Is.EqualTo(PoseId.Point));
+            var open=SyntheticHands.CreatePattern(FingerState.Intermediate,new[] {FingerState.Extended,FingerState.Extended,FingerState.Extended,FingerState.Extended},hand,0,0,.5f);
+            Assert.That(new PoseRuleEvaluator(settings).Evaluate(open).RawPose,Is.EqualTo(PoseId.Open));
+            settings.useThumbSpread=false;
+            Assert.That(new PoseRuleEvaluator(settings).Evaluate(gun).RawPose,Is.EqualTo(PoseId.Point));
+        }
+
+        [Test]
+        public void ThumbSpreadIsInvariantToRotationTranslationAndScale()
+        {
+            foreach(float scale in new[] {.6f,1f,1.8f})
+            {
+                var rotation=Quaternion.Euler(23,71,-48); var offset=new Vector3(.2f,-.3f,.4f);
+                Vector3 Transform(Vector3 p) => rotation*(p*scale)+offset;
+                Assert.That(HandFeatureExtractor.TryThumbSpread(Transform(new Vector3(-.06f,.04f,.02f)),
+                    Transform(new Vector3(-.03f,0,0)),Transform(new Vector3(.03f,0,0)),.01,.2,out var ratio),Is.True);
+                Assert.That(ratio,Is.EqualTo(.5).Within(.0001));
+            }
+            Assert.That(HandFeatureExtractor.TryThumbSpread(Vector3.one,Vector3.zero,Vector3.zero,.01,.2,out _),Is.False);
+        }
+
+        [Test]
+        public void LiveSettingsDisablePinchAndPreserveRecordedSettings()
+        {
+            var saved=new PoseSettings();
+            var live=saved.CopyForLive();
+            Assert.That(saved.disablePinchRecognition,Is.False);
+            Assert.That(live.Copy().disablePinchRecognition,Is.True);
+            var frame=SyntheticHands.Create(PoseId.Pinch,HandId.Left,0,0);
+            Assert.That(new PoseRuleEvaluator(saved).Evaluate(frame).RawPose,Is.EqualTo(PoseId.Pinch));
+            var result=new PoseRuleEvaluator(live).Evaluate(frame);
+            Assert.That(result.RawPose,Is.Not.EqualTo(PoseId.Pinch));
+            Assert.That(result.Candidates[(int)PoseId.Pinch],Is.EqualTo(RuleStatus.Unavailable));
+            foreach(var pose in new[] {PoseId.Open,PoseId.Fist,PoseId.Victory,PoseId.Point,PoseId.Gun,PoseId.Rock,PoseId.ThumbsUp})
+                Assert.That(new PoseRuleEvaluator(live).Evaluate(SyntheticHands.Create(pose,HandId.Left,0,0)).RawPose,Is.EqualTo(pose));
+        }
+
         [TestCase(PoseId.Open)] [TestCase(PoseId.Fist)] [TestCase(PoseId.Victory)]
         [TestCase(PoseId.Point)] [TestCase(PoseId.Pinch)] [TestCase(PoseId.Other)]
         public void A02SyntheticRules(PoseId pose)

@@ -42,15 +42,15 @@ namespace HandPose.Tests
         }
 
         [TestCase(0)] [TestCase(1)] [TestCase(2)] [TestCase(3)]
-        public void OtherFingersRemainIntermediateAndCannotSatisfyBent(int finger)
+        public void OtherFingersRemainMeasuredIntermediateButMatchBent(int finger)
         {
             var states=new[] {FingerState.Bent,FingerState.Bent,FingerState.Bent,FingerState.Bent};
             states[finger]=FingerState.Intermediate;
             var result=new PoseRuleEvaluator(new PoseSettings()).Evaluate(
                 SyntheticHands.CreatePattern(FingerState.Intermediate,states,HandId.Left,0,0));
             Assert.That(result.Features.Fingers[finger].State,Is.EqualTo(FingerState.Intermediate));
-            Assert.That(result.RawPose,Is.EqualTo(PoseId.Other));
-            Assert.That(result.Candidates[(int)PoseId.Fist],Is.EqualTo(RuleStatus.NoMatch));
+            Assert.That(result.RawPose,Is.EqualTo(PoseId.Fist));
+            Assert.That(result.Candidates[(int)PoseId.Fist],Is.EqualTo(RuleStatus.Match));
         }
 
         [Test]
@@ -83,7 +83,7 @@ namespace HandPose.Tests
             saved.thumb.extendedDegrees=155; saved.thumb.bentDegrees=120;
             saved.priority=saved.priority.Reverse().ToArray();
             var current=saved.CopyForLive();
-            Assert.That(current.rulesVersion,Is.EqualTo(6)); Assert.That(saved.rulesVersion,Is.EqualTo(3));
+            Assert.That(current.rulesVersion,Is.EqualTo(7)); Assert.That(saved.rulesVersion,Is.EqualTo(3));
             Assert.That(current.version,Is.Not.EqualTo(saved.version));
             Assert.That(current.priority,Is.EqualTo(saved.priority.Where(p=>p!=PoseId.Fuck)));
             Assert.That(current.thumb.extendedDegrees,Is.EqualTo(155));Assert.That(current.thumb.bentDegrees,Is.EqualTo(120));

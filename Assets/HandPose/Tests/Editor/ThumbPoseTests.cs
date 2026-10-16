@@ -86,7 +86,7 @@ namespace HandPose.Tests
         {
             var legacy=Legacy(); legacy.fingers[0].extendedDegrees=172;
             var current=legacy.CopyForLive();
-            Assert.That(current.rulesVersion,Is.EqualTo(6)); Assert.That(current.priority.Length,Is.EqualTo(8));
+            Assert.That(current.rulesVersion,Is.EqualTo(7)); Assert.That(current.priority.Length,Is.EqualTo(8));
             Assert.That(current.priority.Where(p=>(int)p<5),Is.EqualTo(legacy.priority));
             Assert.That(current.fingers[0].extendedDegrees,Is.EqualTo(172));
             current.thumb.extendedDegrees=170; Assert.That(legacy.thumb.extendedDegrees,Is.EqualTo(150));
@@ -111,7 +111,7 @@ namespace HandPose.Tests
                 }
                 recorder.Stop(); var loaded=CsvSessionReader.Read(recorder.DirectoryPath);
                 Assert.That(loaded.Metadata.schema_version,Is.EqualTo(2)); Assert.That(loaded.Metadata.recording_complete,Is.True);
-                Assert.That(loaded.Metadata.settings.rulesVersion,Is.EqualTo(6));
+                Assert.That(loaded.Metadata.settings.rulesVersion,Is.EqualTo(7));
                 var replay=new PosePipeline(loaded.Metadata.settings); var actual=new List<string>();
                 foreach(var batch in loaded.Batches) {events.Clear();actual.Add(Signature(replay.Process(batch.Left,events)));actual.Add(Signature(replay.Process(batch.Right,events)));}
                 Assert.That(actual,Is.EqualTo(expected));

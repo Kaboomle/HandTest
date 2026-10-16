@@ -11,7 +11,8 @@ namespace HandPose
             var rule=PoseCatalog.Find(pose,rulesVersion);
             if(pose==PoseId.Fuck && rule==null) pose=PoseId.Other;
             var states=new FingerState[4];
-            for(int i=0;i<4;i++) states[i]=pose==PoseId.Other?FingerState.Intermediate:
+            // Ring/little extended with index/middle bent matches no registered pose.
+            for(int i=0;i<4;i++) states[i]=pose==PoseId.Other?(i>=2?FingerState.Extended:FingerState.Bent):
                 rule!=null && !rule.UsesDistance?rule.Fingers[i]:FingerState.Extended;
             var thumb=pose==PoseId.Other?FingerState.Intermediate:(rule?.Thumb??FingerState.Bent);
             var f=CreatePattern(thumb,states,hand,frameId,timestamp,ratio??(pose==PoseId.Pinch?.15f:1.2f),rulesVersion:rulesVersion);

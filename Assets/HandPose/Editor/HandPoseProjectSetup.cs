@@ -65,7 +65,9 @@ namespace HandPose.Editor
             PlayerSettings.Android.minSdkVersion=AndroidSdkVersions.AndroidApiLevel29;
             PlayerSettings.Android.targetSdkVersion=AndroidSdkVersions.AndroidApiLevelAuto;
             PlayerSettings.Android.applicationEntry=AndroidApplicationEntry.Activity;
-            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android,"com.labolatry.handpose");
+            // Keep the original device installation and its data as a separate app.
+            PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android,"com.labolatry.handpose.benttest");
+            PlayerSettings.productName = "HandPose Bent Test";
             PlayerSettings.runInBackground=true; PlayerSettings.defaultInterfaceOrientation=UIOrientation.LandscapeLeft;
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android,false);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.Android,new[] {GraphicsDeviceType.OpenGLES3});

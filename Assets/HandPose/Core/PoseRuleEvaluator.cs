@@ -24,9 +24,10 @@ namespace HandPose
             if(rulesVersion==1 && (int)pose>4) throw new ArgumentException("Pose is inactive in this rule version.",nameof(pose));
             if(rule.UsesDistance) return new[] {JointId.ThumbTip,JointId.IndexTip,JointId.IndexProximal,JointId.LittleProximal};
             var thumb=PoseCatalog.ThumbForVersion(rule,rulesVersion);
-            // MiddleProximal is already in the four-finger set, so v6 adds three distinct joints.
-            var thumbIds=rulesVersion>=6 ? new[] {JointId.ThumbMetacarpal,JointId.ThumbProximal,JointId.Wrist} : HandFeatureExtractor.ThumbJoints;
-            int thumbCount=rulesVersion>=5?3:4;
+            // MiddleProximal is already in the four-finger set. v7 also requires the IP endpoints.
+            var thumbIds=rulesVersion>=7 ? new[] {JointId.ThumbMetacarpal,JointId.ThumbProximal,JointId.Wrist,JointId.ThumbDistal,JointId.ThumbTip} :
+                rulesVersion>=6 ? new[] {JointId.ThumbMetacarpal,JointId.ThumbProximal,JointId.Wrist} : HandFeatureExtractor.ThumbJoints;
+            int thumbCount=rulesVersion>=7?5:rulesVersion>=5?3:4;
             var ids=new JointId[thumb.HasValue?16+thumbCount:16];
             for(int i=0;i<4;i++) Array.Copy(HandFeatureExtractor.FingerJoints[i],0,ids,i*4,4);
             if(thumb.HasValue) Array.Copy(thumbIds,0,ids,16,thumbCount);
@@ -45,6 +46,8 @@ namespace HandPose
                 {r.Candidates[(int)rule.Id]=RuleStatus.Unavailable;continue;}
                 if(rule.UsesDistance)
                 {
+                    if(settings.disablePinchRecognition)
+                    { pinched=false; r.Candidates[(int)rule.Id]=RuleStatus.Unavailable; continue; }
                     if(f.PinchValid)
                     {
                         if(f.PinchRatio<=settings.pinchEnter) pinched=true;
@@ -55,7 +58,12 @@ namespace HandPose
                 }
                 bool valid=true, match=true;
                 for(int i=0;i<4;i++)
-                { valid &= f.Fingers[i].State!=FingerState.Invalid; match &= f.Fingers[i].State==rule.Fingers[i]; }
+                {
+                    var observed = f.Fingers[i].State;
+                    var ruleState = observed == FingerState.Intermediate ? FingerState.Bent : observed;
+                    valid &= observed != FingerState.Invalid;
+                    match &= ruleState == rule.Fingers[i];
+                }
                 var thumb=PoseCatalog.ThumbForVersion(rule,settings.rulesVersion);
                 if(thumb.HasValue)
                 { valid &= f.Thumb.State!=FingerState.Invalid; match &= r.ThumbRuleState==thumb.Value; }

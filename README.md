@@ -1,5 +1,27 @@
 # PICO 4 Ultra 静的手ポーズ判定
 
+親指の伸展判定には、従来の付け根角度/IP条件に加え、親指先の外側への張り出しを使用します。小指MCP→人差し指MCPの方向へ「人差し指MCP→親指先」を射影し、手幅で割った値が `Thumb Spread Extended Ratio`（初期値0.35）以上、かつ付け根角度が `Thumb Spread Min Base Degrees`（初期値20°）以上なら、IP角度にかかわらずExtendedとします。補助条件を満たさない場合は従来の判定を使用します。左右共通の式で、位置・回転・一様な拡大縮小に依存しません。
+
+調整は `Pose Application > Configuration` が参照する設定アセットの `Settings` 内で行います。既定は `Assets/Resources/DefaultPoseConfiguration.asset` です。モニターの `Thumb outward / width` に実測値を表示します。閾値を下げると伸展になりやすく、上げると厳しくなります。Playを再起動するかEditor controlsのApply configurationで反映します。閾値は実測調整前の初期値です。旧記録では補助判定を無効のまま再生し、新規記録には設定を保存します。
+
+ライブ入力のPinch識別を無効化しました。指先距離が近くてもPinchには確定せず、他の7ポーズの条件を満たせばそのポーズ、該当しなければOtherとなります。評価試行もPinchを除いた140試行です。距離計測値と既存のPoseIdは互換性のため保持し、過去の記録のリプレイでは当時の設定を使います。新規記録にはPinch無効設定が保存されます。
+
+## ポスチャ状態遷移モニター
+
+`Pose Application > Transition Reset Seconds` は系列に新しい確定状態が追加されない場合のリセット待ち時間です（初期値5秒、0で無効）。左右独立に判定し、同じポーズの保持や短い未確定候補では待ち時間を延長しません。期限に達すると系列と確認中のフレーム数を消去し、その後の入力から再び確定を開始します。ライブ入力では入力が途切れても期限を判定します。リプレイでは記録された時刻を使用し、一時停止中は時間を進めません。
+
+Inspectorの `Hand Pose System > Pose Application` で `Transition Confirm Frames`（初期値3）と `Transition Pattern`（初期値Open → Fist → Open）を設定できます。Patternは2要素以上で、隣り合うポーズは異なる値を指定します。左右それぞれの確定系列の末尾がPatternと一致した時に `On Transition Matched` イベントが発火します。同じポーズの保持では再発火せず、系列を再度行えば発火します。時間制限はなく、短い未確定候補・追跡不能は系列に追加されません。空または1要素のPatternは認識しません。
+
+一致時は遷移モニターの背景が一時的に変わります。`Pose Debug View > Transition Match Color` で色、`Transition Match Seconds` で秒数（初期値1.5秒）を調整できます。色変更は自動接続済みで、`On Transition Matched` には追加の処理をInspectorから登録できます。
+
+既存の手の状態モニターから頭部基準で右90度、同じ距離（1.5m）に状態遷移モニターを自動生成します。RECENTERで両方を再配置します。左右別にRaw Poseを入力サンプルごとに判定し、同じ候補が3フレーム連続した場合だけ系列へ追加します。同じ確定状態は重複追加しません。既存の時間ベースのstable判定とは独立しています。
+
+`[Open,Open,Open,Fist,Fist,Fist,Open,Open]` は `[Open,Fist]` となり、次の `Open` で `[Open,Fist,Open]` になります。追跡不能は系列に追加せず、連続フレーム数をリセットします。`Other` は通常の状態として扱います。表示は最新24状態ですが、系列はメモリ内に全件保持します。記録開始・停止、設定変更、リプレイ読込・巻戻し、アプリ停止時にはクリアします。
+
+親指判定v7：ポーズ照合でBentとなる条件は「基部角度が45°未満（Intermediateを含む）OR 親指IP内角が140°以下」です。IP内角はMCP→IP→指先の3点で計算し、まっすぐが180°です。必要な関節が欠損した場合はInvalidとなります。閾値は設定アセットで変更できます。保存済みv6以前のCSVは当時の親指判定で再生します。
+
+2026-10-13更新：ポーズ照合時は、親指に加え人差し指〜小指の`Intermediate`も`Bent`として扱います。計測値・CSVの指状態は`Intermediate`のまま保持します。必要な関節が欠けた`Invalid`は読み替えず、`TrackingUnavailable`となります。
+
 
 
 要件定義書1.0（2026-10-10）に基づくUnity試作です。機械学習を使わず、Open／Fist／Victory／Point／Pinch／Gun／Rock／ThumbsUpの8種類を左右独立に判定します。候補集合、Other、TrackingUnavailable、時間による安定化、イベント、デバッグ画面、全フレームCSV記録とEditor再生を含みます。
@@ -26,7 +48,7 @@
 
 | Android | ARM64／IL2CPP、最低API 29、Target API Automatic、Activity、OpenGLES3／Multiview |
 
-| アプリID | `com.labolatry.handpose` |
+| アプリID | `com.labolatry.handpose.benttest`（旧アプリ`com.labolatry.handpose`と共存） |
 
 | PICO OS | PICO 4 Ultra、**5.15.7.U**（利用者申告）。ADBのbuild DISPLAYは5.15.7。SDKによる手ポーズ判定の実機評価は継続して確認します |
 
@@ -132,7 +154,7 @@ $adbPath = 'C:\Program Files\Unity\Hub\Editor\6000.0.38f1\Editor\Data\PlaybackEn
 
 & $adbPath install -r '.\Builds\HandPose-PICO4Ultra.apk'
 
-& $adbPath shell monkey -p com.labolatry.handpose 1
+& $adbPath shell monkey -p com.labolatry.handpose.benttest 1
 
 & $adbPath shell getprop ro.build.display.id
 
@@ -314,15 +336,15 @@ UTF-8・ヘッダー・InvariantCultureです。無効座標や向きは空欄�
 
 ```powershell
 
-& $adbPath shell ls /sdcard/Android/data/com.labolatry.handpose/files/HandPoseSessions
+& $adbPath shell ls /sdcard/Android/data/com.labolatry.handpose.benttest/files/HandPoseSessions
 
-& $adbPath pull /sdcard/Android/data/com.labolatry.handpose/files/HandPoseSessions '.\Recordings'
+& $adbPath pull /sdcard/Android/data/com.labolatry.handpose.benttest/files/HandPoseSessions '.\Recordings'
 
 ```
 
 
 
-OSが外部アプリ専用領域へのアクセスを制限する場合、生成APKはDevelopment Buildなので`adb shell run-as com.labolatry.handpose`の可否を確認してください。`adb logcat -s Unity`で画面の保存先と書込エラーを確認できます。SDK自体のカメラ入力は使いますが、本アプリは映像・氏名を保存せず、ネットワーク送信もしません。
+OSが外部アプリ専用領域へのアクセスを制限する場合、生成APKはDevelopment Buildなので`adb shell run-as com.labolatry.handpose.benttest`の可否を確認してください。`adb logcat -s Unity`で画面の保存先と書込エラーを確認できます。SDK自体のカメラ入力は使いますが、本アプリは映像・氏名を保存せず、ネットワーク送信もしません。
 
 
 
@@ -405,4 +427,3 @@ SDKアダプター、HMD表示の読みやすさ、視線操作、実際の保�
 
 
 SDK 3.4.0のEditor／Development初期化はデバッガー設定がない場合に例外を出すため、標準型の`PXR_PicoDebuggerSO.asset`をResourcesへ用意し、isOpen=falseとしています。SDKコードは変更していません。公開される観測・候補オブジェクトは読み取り専用として扱ってください。
-

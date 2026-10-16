@@ -11,12 +11,16 @@ namespace HandPose
         int index;
         double cue;
         public bool Active { get; private set; }
-        public string Instruction { get; private set; } = $"Evaluation: {PoseCatalog.Rules.Length} poses x 10 trials x 2 hands";
+        public string Instruction { get; private set; } = $"Evaluation: {PoseCatalog.Rules.Length-1} poses x 10 trials x 2 hands (Pinch disabled)";
         const double PrepareSeconds=1, HoldSeconds=2, RestSeconds=1;
-        public void Begin(double time)
+        public void Begin(double time,bool disablePinch=false)
         {
             schedule.Clear();
-            for(int h=0;h<2;h++) foreach(var rule in PoseCatalog.Rules) for(int r=0;r<10;r++) schedule.Add(new Target {Hand=(HandId)h,Pose=rule.Id});
+            for(int h=0;h<2;h++) foreach(var rule in PoseCatalog.Rules)
+            {
+                if(disablePinch && rule.Id==PoseId.Pinch) continue;
+                for(int r=0;r<10;r++) schedule.Add(new Target {Hand=(HandId)h,Pose=rule.Id});
+            }
             var random=new Random(20261010);
             for(int i=schedule.Count-1;i>0;i--) { int k=random.Next(i+1); var t=schedule[k]; schedule[k]=schedule[i]; schedule[i]=t; }
             index=0; cue=time; Active=true; SetInstruction(time);

@@ -85,13 +85,22 @@ namespace HandPose
     [Serializable]
     public sealed class PoseSettings
     {
-        public string version = "6.0-thumb-base-angle";
+        public string version = "7.0-thumb-base-or-ip";
         public int rulesVersion = PoseCatalog.CurrentRulesVersion;
         public FingerThreshold[] fingers = { new FingerThreshold(), new FingerThreshold(), new FingerThreshold(), new FingerThreshold() };
-        [HideInInspector] public FingerThreshold thumb = DefaultThumbThreshold(); // Historical MCP/IP thresholds.
+        [Tooltip("Bent degrees is the thumb IP curl threshold in v7; extended degrees is used by historical rules.")]
+        public FingerThreshold thumb = DefaultThumbThreshold();
         [Tooltip("Angle between thumb CMC-to-MCP and wrist-to-middle-MCP (rule version 6).")]
         public FingerThreshold thumbBase = DefaultThumbBaseThreshold();
+        [Tooltip("Supplement the base/IP rule with normalized thumb-side tip reach. Disabled in older recordings.")]
+        public bool useThumbSpread;
+        [Min(0), Tooltip("Minimum outward thumb-tip reach divided by hand width (0.35 means 35% of hand width).")]
+        public float thumbSpreadExtendedRatio = .35f;
+        [Range(0,180), Tooltip("Minimum base angle required for the thumb-spread extension rule.")]
+        public float thumbSpreadMinBaseDegrees = 20f;
         public float pinchEnter = 0.25f, pinchExit = 0.35f;
+        // Missing in older recordings: false preserves their original recognition behavior.
+        [HideInInspector] public bool disablePinchRecognition;
         public float minHandScaleMeters = 0.01f, maxHandScaleMeters = 0.20f;
         public float minSegmentMeters = 0.000001f;
         public double stabilizationSeconds = 0.1;
@@ -112,6 +121,9 @@ namespace HandPose
             foreach (var f in fingers) ValidateThreshold(f);
             ValidateThreshold(thumb);
             if(rulesVersion>=6) ValidateThreshold(thumbBase);
+            if(useThumbSpread && (!Numeric.Finite(thumbSpreadExtendedRatio) || thumbSpreadExtendedRatio<0 ||
+                !Numeric.Finite(thumbSpreadMinBaseDegrees) || thumbSpreadMinBaseDegrees<0 || thumbSpreadMinBaseDegrees>180))
+                throw new ArgumentException("Invalid thumb spread thresholds.");
             if(rulesVersion < 1 || rulesVersion > PoseCatalog.CurrentRulesVersion) throw new ArgumentException("Unsupported rules version.");
             if (!Numeric.Finite(pinchEnter) || !Numeric.Finite(pinchExit) || pinchEnter < 0 || pinchExit <= pinchEnter)
                 throw new ArgumentException("Pinch requires 0 <= enter < exit.");
@@ -165,8 +177,10 @@ namespace HandPose
                 foreach(var pose in c.priority) if(PoseCatalog.IsRule(pose)) order.Add(pose);
                 c.priority=order.ToArray();
             }
-            if(c.rulesVersion < PoseCatalog.CurrentRulesVersion) c.version=version+"-base-angle-v6";
+            if(c.rulesVersion < PoseCatalog.CurrentRulesVersion) c.version=version+"-base-or-ip-v7";
             c.rulesVersion=PoseCatalog.CurrentRulesVersion;
+            c.disablePinchRecognition=true;
+            c.useThumbSpread=true;
             return c.Copy();
         }
     }

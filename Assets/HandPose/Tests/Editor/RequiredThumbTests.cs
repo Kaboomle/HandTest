@@ -39,7 +39,7 @@ namespace HandPose.Tests
                 var result=new PoseRuleEvaluator(new PoseSettings()).Evaluate(frame);
                 Assert.That(result.RawPose,Is.EqualTo(PoseId.TrackingUnavailable));
                 Assert.That(result.Candidates[(int)pose],Is.EqualTo(RuleStatus.Unavailable));
-                Assert.That(PoseRuleEvaluator.RequiredJoints(pose).Length,Is.EqualTo(19));
+                Assert.That(PoseRuleEvaluator.RequiredJoints(pose).Length,Is.EqualTo(21));
             }
         }
 
@@ -65,7 +65,7 @@ namespace HandPose.Tests
             saved.thumb.extendedDegrees=155; saved.thumb.bentDegrees=120;
             saved.priority=saved.priority.Reverse().ToArray();
             var current=saved.CopyForLive();
-            Assert.That(current.rulesVersion,Is.EqualTo(6)); Assert.That(current.version,Is.Not.EqualTo(saved.version));
+            Assert.That(current.rulesVersion,Is.EqualTo(7)); Assert.That(current.version,Is.Not.EqualTo(saved.version));
             Assert.That(current.priority,Is.EqualTo(saved.priority.Where(p=>p!=PoseId.Fuck)));
             Assert.That(current.thumb.extendedDegrees,Is.EqualTo(155)); Assert.That(current.thumb.bentDegrees,Is.EqualTo(120));
             Assert.That(saved.rulesVersion,Is.EqualTo(2));

@@ -9,6 +9,35 @@ namespace HandPose.Tests
 {
     public class ThumbBaseAngleTests
     {
+        [TestCase(10,180,PoseId.Point)]
+        [TestCase(30,180,PoseId.Point)]
+        [TestCase(65,125,PoseId.Point)]
+        [TestCase(65,95,PoseId.Point)]
+        [TestCase(10,95,PoseId.Point)]
+        [TestCase(65,125.01,PoseId.Gun)]
+        [TestCase(45,180,PoseId.Gun)]
+        public void CurrentThumbIsBentWhenBaseOrIpIsBent(double opening,double ip,PoseId expected)
+        {
+            foreach(var hand in new[] {HandId.Left,HandId.Right}) {
+                var result=new PoseRuleEvaluator(new PoseSettings()).Evaluate(CreateAngles(opening,180,ip,hand));
+                Assert.That(result.Features.Thumb.Ip,Is.EqualTo(ip).Within(.001));
+                Assert.That(result.ThumbRuleState,Is.EqualTo(expected==PoseId.Point?FingerState.Bent:FingerState.Extended));
+                Assert.That(result.RawPose,Is.EqualTo(expected));
+            }
+        }
+
+        [TestCase(JointId.ThumbProximal)]
+        [TestCase(JointId.ThumbDistal)]
+        [TestCase(JointId.ThumbTip)]
+        public void CurrentThumbRequiresIpJointData(JointId joint)
+        {
+            var frame=CreateAngles(65,180,180,HandId.Left);
+            frame.Joints[(int)joint].PositionValid=false;
+            var result=new PoseRuleEvaluator(new PoseSettings()).Evaluate(frame);
+            Assert.That(result.Features.Thumb.State,Is.EqualTo(FingerState.Invalid));
+            Assert.That(result.RawPose,Is.EqualTo(PoseId.TrackingUnavailable));
+        }
+
         [TestCase(0,FingerState.Bent,PoseId.Point)]
         [TestCase(20,FingerState.Bent,PoseId.Point)]
         [TestCase(20.01,FingerState.Intermediate,PoseId.Point)]
@@ -20,7 +49,7 @@ namespace HandPose.Tests
         {
             foreach(var hand in new[] {HandId.Left,HandId.Right}) {
                 var frame=CreateAngles(angle,95,95,hand);
-                var result=new PoseRuleEvaluator(new PoseSettings()).Evaluate(frame);
+                var result=new PoseRuleEvaluator(new PoseSettings {rulesVersion=6}).Evaluate(frame);
                 Assert.That(result.Features.Thumb.BaseAngleValid,Is.True);
                 Assert.That(result.Features.Thumb.BaseAngle,Is.EqualTo(angle).Within(.001));
                 Assert.That(result.Features.Thumb.State,Is.EqualTo(expected));
@@ -33,17 +62,17 @@ namespace HandPose.Tests
         public void ThumbMcpAndIpCurlDoNotChangeBaseState(double mcp,double ip)
         {
             var frame=CreateAngles(65,mcp,ip,HandId.Left);
-            var result=new PoseRuleEvaluator(new PoseSettings()).Evaluate(frame);
+            var result=new PoseRuleEvaluator(new PoseSettings {rulesVersion=6}).Evaluate(frame);
             Assert.That(result.Features.Thumb.Mcp,Is.EqualTo(mcp).Within(.001));
             Assert.That(result.Features.Thumb.Ip,Is.EqualTo(ip).Within(.001));
             Assert.That(result.Features.Thumb.State,Is.EqualTo(FingerState.Extended));
             Assert.That(result.RawPose,Is.EqualTo(PoseId.Gun));
             frame.Joints[(int)JointId.ThumbDistal].PositionValid=false;
-            var missingDistal=new PoseRuleEvaluator(new PoseSettings()).Evaluate(frame);
+            var missingDistal=new PoseRuleEvaluator(new PoseSettings {rulesVersion=6}).Evaluate(frame);
             Assert.That(missingDistal.Features.Thumb.State,Is.EqualTo(FingerState.Extended));
             Assert.That(missingDistal.RawPose,Is.EqualTo(PoseId.Gun));
             frame.Joints[(int)JointId.ThumbTip].PositionValid=false;
-            var missingTip=new PoseRuleEvaluator(new PoseSettings()).Evaluate(frame);
+            var missingTip=new PoseRuleEvaluator(new PoseSettings {rulesVersion=6}).Evaluate(frame);
             Assert.That(missingTip.Features.Thumb.State,Is.EqualTo(FingerState.Extended));
             Assert.That(missingTip.Candidates[(int)PoseId.Gun],Is.EqualTo(RuleStatus.Match));
             Assert.That(missingTip.Candidates[(int)PoseId.Pinch],Is.EqualTo(RuleStatus.Unavailable));
@@ -55,7 +84,7 @@ namespace HandPose.Tests
         {
             var frame=CreateAngles(65,180,180,HandId.Right);
             frame.Joints[(int)joint].PositionValid=false;
-            var result=new PoseRuleEvaluator(new PoseSettings()).Evaluate(frame);
+            var result=new PoseRuleEvaluator(new PoseSettings {rulesVersion=6}).Evaluate(frame);
             Assert.That(result.Features.Thumb.BaseAngleValid,Is.False);
             Assert.That(result.Features.Thumb.State,Is.EqualTo(FingerState.Invalid));
             Assert.That(result.RawPose,Is.EqualTo(PoseId.TrackingUnavailable));
@@ -66,7 +95,7 @@ namespace HandPose.Tests
         {
             var frame=CreateAngles(65,180,180,HandId.Right);
             frame.Joints[(int)JointId.Wrist].Position=frame.Joints[(int)JointId.MiddleProximal].Position;
-            Assert.That(HandFeatureExtractor.Extract(frame,new PoseSettings()).Thumb.BaseAngleValid,Is.False);
+            Assert.That(HandFeatureExtractor.Extract(frame,new PoseSettings {rulesVersion=6}).Thumb.BaseAngleValid,Is.False);
             Assert.That(HandFeatureExtractor.TryVectorAngle(Vector3.zero,Vector3.zero,Vector3.zero,Vector3.up,1e-6,out _),Is.False);
             Assert.That(HandFeatureExtractor.TryVectorAngle(Vector3.zero,new Vector3(float.NaN,1,0),Vector3.zero,Vector3.up,1e-6,out _),Is.False);
             Assert.That(HandFeatureExtractor.TryVectorAngle(new Vector3(10,2,3),new Vector3(10,3,3),new Vector3(-2,4,8),new Vector3(-2,5,8),1e-6,out var angle),Is.True);
@@ -82,7 +111,7 @@ namespace HandPose.Tests
                     var sample=frame.Joints[i]; var p=sample.Position; p.x=-p.x;
                     sample.Position=rotation*(p*scale)+new Vector3(1.2f,-.1f,.2f); frame.Joints[i]=sample;
                 }
-                var result=new PoseRuleEvaluator(new PoseSettings()).Evaluate(frame);
+                var result=new PoseRuleEvaluator(new PoseSettings {rulesVersion=6}).Evaluate(frame);
                 Assert.That(result.Features.Thumb.BaseAngle,Is.EqualTo(65).Within(.001));
                 Assert.That(result.RawPose,Is.EqualTo(PoseId.Gun));
             }
@@ -94,7 +123,7 @@ namespace HandPose.Tests
             var old=new PoseSettings {rulesVersion=5,version="saved-v5",thumbBase=null};
             old.thumb.extendedDegrees=155; old.thumb.bentDegrees=120;
             var live=old.CopyForLive();
-            Assert.That(live.rulesVersion,Is.EqualTo(6)); Assert.That(old.rulesVersion,Is.EqualTo(5));
+            Assert.That(live.rulesVersion,Is.EqualTo(7)); Assert.That(old.rulesVersion,Is.EqualTo(5));
             Assert.That(live.thumbBase.extendedDegrees,Is.EqualTo(45)); Assert.That(live.thumbBase.bentDegrees,Is.EqualTo(20));
             Assert.That(live.thumb.extendedDegrees,Is.EqualTo(155));
             live.thumbBase.extendedDegrees=60;
@@ -106,7 +135,7 @@ namespace HandPose.Tests
         [Test]
         public void RuleRequirementsIncludeWristAndExcludeThumbDistal()
         {
-            var ids=PoseRuleEvaluator.RequiredJoints(PoseId.Gun);
+            var ids=PoseRuleEvaluator.RequiredJoints(PoseId.Gun,6);
             Assert.That(ids.Length,Is.EqualTo(19)); Assert.That(ids.Distinct().Count(),Is.EqualTo(19));
             foreach(var id in HandFeatureExtractor.ThumbBaseJoints) Assert.That(ids.Contains(id),Is.True);
             Assert.That(ids.Contains(JointId.ThumbDistal),Is.False); Assert.That(ids.Contains(JointId.ThumbTip),Is.False);

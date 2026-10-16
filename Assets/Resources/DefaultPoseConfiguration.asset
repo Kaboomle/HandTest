@@ -13,8 +13,11 @@ MonoBehaviour:
   m_Name: DefaultPoseConfiguration
   m_EditorClassIdentifier: 
   settings:
-    version: 6.0-thumb-base-angle
-    rulesVersion: 6
+    version: 7.0-thumb-base-or-ip
+    rulesVersion: 7
+    useThumbSpread: 1
+    thumbSpreadExtendedRatio: 0.35
+    thumbSpreadMinBaseDegrees: 20
     fingers:
     - extendedDegrees: 160
       bentDegrees: 130
@@ -26,7 +29,7 @@ MonoBehaviour:
       bentDegrees: 130
     thumb:
       extendedDegrees: 150
-      bentDegrees: 125
+      bentDegrees: 140
     thumbBase:
       extendedDegrees: 45
       bentDegrees: 20

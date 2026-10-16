@@ -12,7 +12,7 @@ namespace HandPose
     }
     public static class PoseCatalog
     {
-        public const int CurrentRulesVersion=6;
+        public const int CurrentRulesVersion=7;
         const FingerState E=FingerState.Extended, B=FingerState.Bent;
         // Four-finger order is index, middle, ring, little. Pinch uses tip distance alone.
         public static readonly PoseRuleDefinition[] Rules = {

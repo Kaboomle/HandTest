@@ -93,19 +93,19 @@ namespace HandPose.Editor
                 if(EditorApplication.timeSinceStartup-changed<.35) return;
                 bool mcpProbe=index==PoseCatalog.Rules.Length;
                 bool intermediateProbe=index==PoseCatalog.Rules.Length+1;
-                var expectedLeft=intermediateProbe?PoseId.Fist:mcpProbe?PoseId.Gun:PoseCatalog.Rules[index].Id;
-                var expectedRight=intermediateProbe?PoseId.Point:mcpProbe?PoseId.ThumbsUp:RightPose(index);
+                var expectedLeft=intermediateProbe?PoseId.Fist:mcpProbe?PoseId.Point:PoseCatalog.Rules[index].Id;
+                var expectedRight=intermediateProbe?PoseId.Point:mcpProbe?PoseId.Fist:RightPose(index);
                 // Editor callbacks can run before the next rendered Update, especially during startup.
                 bool stabilized=app.Left.Stable.Ready && app.Left.Stable.Pose==expectedLeft && app.Right.Stable.Ready && app.Right.Stable.Pose==expectedRight;
                 if(!stabilized && EditorApplication.timeSinceStartup-changed<8) return;
                 Require(stabilized,$"Expected {expectedLeft}/{expectedRight}; observed raw={app.Left.Rules.RawPose}/{app.Right.Rules.RawPose}, stable={app.Left.Stable.Pose}/{app.Right.Stable.Pose}, ready={app.Left.Stable.Ready}/{app.Right.Stable.Ready}.");
-                Require(app.ActiveSettings.rulesVersion==6,"Active rule version is not 6.");
+                Require(app.ActiveSettings.rulesVersion==7,"Active rule version is not 7.");
                 foreach(var observation in new[] {app.Left,app.Right})
                 {
                     var rule=PoseCatalog.Find(observation.Rules.RawPose);
                     if(rule.Thumb.HasValue) Require(observation.Rules.ThumbRuleState==rule.Thumb.Value,"Rule thumb state differs from the pose definition.");
                     if(mcpProbe)
-                    {Require(observation.Rules.Features.Thumb.State==FingerState.Extended,"IP affected base-angle classification.");Require(Math.Abs(observation.Rules.Features.Thumb.BaseAngle-65)<.001,"Base angle differs from fixture.");Require(Math.Abs(observation.Rules.Features.Thumb.Ip-95)<.001,"Bent IP diagnostic was not retained.");}
+                    {Require(observation.Rules.Features.Thumb.State==FingerState.Bent,"IP curl did not override base opening.");Require(Math.Abs(observation.Rules.Features.Thumb.BaseAngle-65)<.001,"Base angle differs from fixture.");Require(Math.Abs(observation.Rules.Features.Thumb.Ip-95)<.001,"Bent IP diagnostic was not retained.");}
                     if(intermediateProbe) Require(observation.Rules.Features.Thumb.State==FingerState.Intermediate,"Measured thumb state was not preserved.");
                     if(rule.Id==PoseId.Gun) Require(observation.Rules.Candidates[(int)PoseId.Point]==RuleStatus.NoMatch,"Gun also matches Point.");
                     if(rule.Id==PoseId.ThumbsUp) Require(observation.Rules.Candidates[(int)PoseId.Fist]==RuleStatus.NoMatch,"ThumbsUp also matches Fist.");
@@ -144,7 +144,7 @@ namespace HandPose.Editor
                 else
                 {
                     Directory.CreateDirectory("Validation/Logs");
-                    File.WriteAllText("Validation/Logs/thumb-base-angle-ui-smoke.txt","Passed: rulesVersion=6; all eight canonical synthetic poses stabilized independently for both hands in the saved demo scene; hand labels match stable poses; Gun excludes Point and ThumbsUp excludes Fist; a recorded intermediate-thumb probe replays as left Fist and right Point with stable hand labels; Base opening 65 / IP 95 replay recognizes Gun and ThumbsUp; dashboard excludes retired candidate and shows base-angle definition; Intermediate replay retains Intermediate (as Bent) and base opening; measured features remain Intermediate; dashboard and hand screenshots rendered.\nSynthetic input only; physical thumb tracking and thresholds are not validated. Screenshots use a temporary inspection camera and visibility controls; saved scene is unchanged.\n");
+                    File.WriteAllText("Validation/Logs/thumb-base-angle-ui-smoke.txt","Passed: rulesVersion=7; all eight canonical synthetic poses stabilized independently for both hands in the saved demo scene; hand labels match stable poses; Gun excludes Point and ThumbsUp excludes Fist; a recorded intermediate-thumb probe replays as left Fist and right Point with stable hand labels; Base opening 65 / IP 95 replay recognizes Point and Fist; dashboard excludes retired candidate and shows base-angle definition; Intermediate replay retains Intermediate (as Bent) and base opening; measured features remain Intermediate; dashboard and hand screenshots rendered.\nSynthetic input only; physical thumb tracking and thresholds are not validated. Screenshots use a temporary inspection camera and visibility controls; saved scene is unchanged.\n");
                     Finish(0,"Base-angle thumb rule version 6 PlayMode UI validation passed.");
                 }
             }

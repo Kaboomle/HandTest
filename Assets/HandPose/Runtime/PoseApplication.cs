@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace HandPose
 {
     public enum EditorInputSource { Synthetic=0, Pico=1, Replay=2, Auto=3 }
+    [Serializable]
+    public sealed class PoseTransitionMatchEvent : UnityEvent<HandId> { }
 
     public sealed class PoseApplication : MonoBehaviour
     {
@@ -17,8 +20,18 @@ namespace HandPose
         public ReplayHandJointProvider replay;
         public Camera headCamera;
         public Transform trackingOrigin;
+        [Min(1), Tooltip("Consecutive input frames required to confirm a pose transition (both hands).")]
+        public int transitionConfirmFrames = 3;
+        [Min(0), Tooltip("Reset each hand's sequence after this many seconds without a confirmed change. 0 disables the timeout.")]
+        public float transitionResetSeconds = 5f;
+        [Tooltip("Ordered confirmed poses to recognize independently on each hand. Use at least two entries; adjacent entries must differ.")]
+        public PoseId[] transitionPattern = { PoseId.Open, PoseId.Fist, PoseId.Open };
+        public PoseTransitionMatchEvent onTransitionMatched = new PoseTransitionMatchEvent();
+        public event Action<HandId> TransitionMatched;
         public PoseObservation Left { get; private set; }
         public PoseObservation Right { get; private set; }
+        public PoseTransitionSequence LeftTransitions { get; } = new PoseTransitionSequence();
+        public PoseTransitionSequence RightTransitions { get; } = new PoseTransitionSequence();
         public PoseCsvRecorder Recorder { get; private set; } = new PoseCsvRecorder();
         public PoseTrialRunner Trials { get; private set; } = new PoseTrialRunner();
         public string Status { get; private set; } = "Initializing";
@@ -75,9 +88,11 @@ namespace HandPose
             catch(Exception ex) { Status="Configuration error: "+ex.Message; }
         }
         void CreatePipeline()
-        { pipeline=new PosePipeline(settings); pipeline.PoseEventRaised+=e=>PoseEventRaised?.Invoke(e); Left=null; Right=null; }
+        { pipeline=new PosePipeline(settings); pipeline.PoseEventRaised+=e=>PoseEventRaised?.Invoke(e); Left=null; Right=null; LeftTransitions.Clear(); RightTransitions.Clear(); }
         void Update()
         {
+            LeftTransitions.RequiredFrames=RightTransitions.RequiredFrames=Math.Max(1,transitionConfirmFrames);
+            LeftTransitions.InactivitySeconds=RightTransitions.InactivitySeconds=Math.Max(0,transitionResetSeconds);
             if(!initialized || provider==null || pipeline==null) return;
             double now=Time.realtimeSinceStartupAsDouble;
             // Drain all due replay samples without skipping. Live input has one batch per rendered Update.
@@ -87,16 +102,31 @@ namespace HandPose
                 DataTime=batch.Left.Timestamp; events.Clear(); timer.Restart();
                 if(Recorder.IsRecording && !recordingHasFrame) { recordingStarted=DataTime; recordingHasFrame=true; }
                 Left=pipeline.Process(batch.Left,events); Right=pipeline.Process(batch.Right,events);
+                // Replay uses recorded time; live input uses a monotonic clock, including input outages.
+                double transitionTime=ReferenceEquals(provider,replay)?DataTime:now;
+                bool leftChanged=LeftTransitions.Update(Left.Rules.RawPose,transitionTime);
+                bool rightChanged=RightTransitions.Update(Right.Rules.RawPose,transitionTime);
                 timer.Stop(); Left.ProcessingMs=Right.ProcessingMs=timer.Elapsed.TotalMilliseconds;
                 Recorder.Record(Left,Right,events);
+                bool leftMatched=leftChanged && LeftTransitions.MatchesSuffix(transitionPattern);
+                bool rightMatched=rightChanged && RightTransitions.MatchesSuffix(transitionPattern);
+                if(leftMatched) RaiseTransitionMatch(HandId.Left);
+                if(rightMatched) RaiseTransitionMatch(HandId.Right);
                 foreach(var reset in batch.ResetsAfter)
                 {
                     events.Clear(); pipeline.Reset(reset.Hand,reset.Timestamp,reset.Reason,events); Recorder.RecordEvents(events);
                     if(reset.Hand==HandId.Left) Left=null; else Right=null;
+                    if(reset.Hand==HandId.Left) LeftTransitions.Interrupt(); else RightTransitions.Interrupt();
                 }
                 if(Trials.Tick(DataTime,Recorder)) StopRecording();
             }
+            if(!ReferenceEquals(provider,replay)) { LeftTransitions.Expire(now); RightTransitions.Expire(now); }
             if(!string.IsNullOrEmpty(Recorder.LastError)) { Trials.Abort(DataTime,Recorder); Status="Recording error: "+Recorder.LastError; Recorder.Stop(); }
+        }
+        void RaiseTransitionMatch(HandId hand)
+        {
+            TransitionMatched?.Invoke(hand);
+            onTransitionMatched?.Invoke(hand);
         }
         SessionMetadata Metadata()
         {
@@ -125,7 +155,7 @@ namespace HandPose
         {
             if(ReferenceEquals(provider,replay)) { Status="Evaluation requires live or synthetic input, not replay."; return; }
             if(Recorder.IsRecording) StopRecording();
-            StartRecording(); if(Recorder.IsRecording) Trials.Begin(DataTime);
+            StartRecording(); if(Recorder.IsRecording) Trials.Begin(DataTime,settings.disablePinchRecognition);
         }
         public void ApplySettings()
         {
@@ -162,6 +192,7 @@ namespace HandPose
             if(!ReferenceEquals(provider,replay)) DataTime=Time.realtimeSinceStartupAsDouble;
             events.Clear(); pipeline.Reset(HandId.Left,DataTime,reason,events); pipeline.Reset(HandId.Right,DataTime,reason,events);
             Recorder.RecordEvents(events); Left=null; Right=null;
+            LeftTransitions.Clear(); RightTransitions.Clear();
         }
         void OnApplicationPause(bool pause)
         { if(pause) { Trials.Abort(DataTime,Recorder); ResetAll("ApplicationPaused"); } }
